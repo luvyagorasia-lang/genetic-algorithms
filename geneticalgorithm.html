@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Genetic Algorithm — Interactive Demo & Applications</title>
+  <style>
+    :root{
+      --bg:#0a0f1c;
+      --panel:#112135;
+      --accent:#4fa3d1;
+      --muted:#d9cdb4;
+      --glass: rgba(255,255,255,0.03);
+      --card:#0f2135;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#0e192c);color:var(--muted)}
+    .wrap{display:grid;grid-template-columns:420px 1fr;gap:20px;padding:28px;align-items:start}
+    header{grid-column:1/-1;display:flex;align-items:center;gap:18px}
+    h1{margin:0;font-size:20px;color:var(--accent)}
+    .subtitle{font-size:13px;color:rgba(255,255,255,0.6)}
+
+    .panel{background:var(--panel);padding:18px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.6)}
+    .controls{position:sticky;top:28px}
+    label{display:block;font-size:12px;color:var(--muted);margin:12px 0 6px}
+    input[type=range]{width:100%}
+    input[type=text],select{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:var(--glass);color:var(--muted)}
+    button{background:linear-gradient(180deg,var(--accent),#3079a1);border:none;padding:10px 14px;border-radius:10px;color:#fdf6ec;font-weight:700;cursor:pointer}
+    .muted{color:rgba(255,255,255,0.65);font-size:13px}
+
+    .main{display:grid;grid-template-rows:280px 1fr;gap:20px}
+    .card{background:linear-gradient(90deg,rgba(25,45,70,0.6),rgba(18,34,52,0.6));padding:16px;border-radius:12px}
+    #populationCanvas{width:100%;height:220px;background:linear-gradient(180deg,#0c1626,#132640);border-radius:8px;display:block}
+
+    .stats{display:flex;gap:12px;flex-wrap:wrap}
+    .stat{background:rgba(255,255,255,0.05);padding:10px;border-radius:8px;min-width:120px}
+
+    .apps{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+    .app{background:var(--card);padding:12px;border-radius:10px}
+
+    footer{grid-column:1/-1;margin-top:6px;color:rgba(255,255,255,0.45);font-size:13px}
+
+    @media (max-width:920px){.wrap{grid-template-columns:1fr;padding:14px}.controls{position:static}.main{grid-template-rows:220px 1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div style="width:56px;height:56px;background:linear-gradient(135deg,#3079a1,#4fa3d1);border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fdf6ec">GA</div>
+      <div>
+        <h1>Genetic Algorithm — Interactive Demo</h1>
+        <div class="subtitle">A compact, interactive single-file demonstration of how evolutionary search works & common applications.</div>
+      </div>
+    </header>
+
+    <aside class="panel controls">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-weight:700;color:var(--muted)">Experiment Controls</div>
+        <div class="muted">Blue & Beige Theme</div>
+      </div>
+
+      <label>Target phrase (goal)</label>
+      <input id="target" type="text" value="EVOLVE GENETIC ART" />
+
+      <label>Population size: <span id="popVal">120</span></label>
+      <input id="popSize" type="range" min="20" max="600" value="120" />
+
+      <label>Selection pressure (tournament size): <span id="tourVal">5</span></label>
+      <input id="tournament" type="range" min="2" max="20" value="5" />
+
+      <label>Mutation rate (% per char): <span id="mutVal">2</span></label>
+      <input id="mutation" type="range" min="0" max="20" value="2" />
+
+      <label>Crossover type</label>
+      <select id="crossover">
+        <option value="single">Single-point crossover</option>
+        <option value="two">Two-point crossover</option>
+        <option value="uniform">Uniform crossover</option>
+      </select>
+
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button id="runBtn">Start</button>
+        <button id="stepBtn">Step</button>
+        <button id="resetBtn" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:var(--muted)">Reset</button>
+      </div>
+
+      <label style="margin-top:14px">Notes (interactive demo)</label>
+      <div class="muted" style="font-size:13px">This demo evolves a population of candidate strings toward the target phrase using selection, crossover and mutation. Adjust parameters to explore different evolutionary behaviors.</div>
+    </aside>
+
+    <main class="main">
+      <section class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-weight:700;color:var(--muted)">Live population — best individual / fitness</div>
+          <div class="muted">Generation: <span id="generation">0</span></div>
+        </div>
+        <canvas id="populationCanvas"></canvas>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+          <div>
+            <div style="font-size:14px;font-weight:800;color:var(--accent)" id="bestString">-</div>
+            <div class="muted" id="bestFitness">Fitness: -</div>
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="muted">Avg fitness</div><div id="avgFitness">-</div></div>
+            <div class="stat"><div class="muted">Population</div><div id="popCount">-</div></div>
+            <div class="stat"><div class="muted">Elapsed (s)</div><div id="elapsed">0</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-weight:700;color:var(--muted)">Applications & Practical Uses</div>
+          <div class="muted">Where GAs shine</div>
+        </div>
+        <div class="apps">
+          <div class="app"><strong>Engineering design</strong><div class="muted">Optimize shapes, structural layouts, composite parametrization, multi-objective tradeoffs.</div></div>
+          <div class="app"><strong>Hyperparameter tuning</strong><div class="muted">Search ML model hyperparameters when gradients are unavailable.</div></div>
+          <div class="app"><strong>Scheduling</strong><div class="muted">Job-shop scheduling, rostering and timetabling problems.</div></div>
+          <div class="app"><strong>Robotics & control</strong><div class="muted">Evolve controllers, gait parameters, or neural network weights.</div></div>
+          <div class="app"><strong>Creative generation</strong><div class="muted">Evolve art, music, level design, and procedural content.</div></div>
+          <div class="app"><strong>Feature selection</strong><div class="muted">Select relevant feature subsets for ML pipelines.</div></div>
+        </div>
+
+        <hr style="border:none;height:1px;background:rgba(255,255,255,0.08);margin:12px 0">
+        <div class="muted">Tips: Combine GA with local search (memetic algorithms) for faster convergence. Use niching for multimodal problems, and scale population or mutation when problem dimensionality grows.</div>
+      </section>
+
+      <footer>
+        <strong>How it works (brief):</strong> initialize random population → evaluate fitness → select parents → produce offspring by crossover → mutate → replace population → repeat until criteria met.
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    function randInt(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+    function choice(arr){return arr[randInt(0,arr.length-1)]}
+    const charset = [];
+    for(let i=32;i<127;i++) charset.push(String.fromCharCode(i));
+    const targetInput = document.getElementById('target');
+    const popSizeSlider = document.getElementById('popSize');
+    const tournamentSlider = document.getElementById('tournament');
+    const mutationSlider = document.getElementById('mutation');
+    const crossoverSel = document.getElementById('crossover');
+    const runBtn = document.getElementById('runBtn');
+    const stepBtn = document.getElementById('stepBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const generationEl = document.getElementById('generation');
+    const bestStringEl = document.getElementById('bestString');
+    const bestFitnessEl = document.getElementById('bestFitness');
+    const avgFitnessEl = document.getElementById('avgFitness');
+    const popCountEl = document.getElementById('popCount');
+    const elapsedEl = document.getElementById('elapsed');
+    document.getElementById('popVal').textContent = popSizeSlider.value;
+    document.getElementById('tourVal').textContent = tournamentSlider.value;
+    document.getElementById('mutVal').textContent = mutationSlider.value;
+    popSizeSlider.oninput = ()=>document.getElementById('popVal').textContent = popSizeSlider.value;
+    tournamentSlider.oninput = ()=>document.getElementById('tourVal').textContent = tournamentSlider.value;
+    mutationSlider.oninput = ()=>document.getElementById('mutVal').textContent = mutationSlider.value;
+    const canvas = document.getElementById('populationCanvas');
+    const ctx = canvas.getContext('2d');
+    function resizeCanvas(){canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight}
+    window.addEventListener('resize',resizeCanvas); resizeCanvas();
+    let population = [];
+    let generation = 0;
+    let running = false;
+    let timer = null;
+    let startTime = null;
+    function randomIndividual(len){let s=''; for(let i=0;i<len;i++) s+=choice(charset); return s;}
+    function fitness(ind, target){let score=0; for(let i=0;i<target.length;i++) if(ind[i]===target[i]) score++; return score;}
+    function init(){const target = targetInput.value || '';population = [];for(let i=0;i<parseInt(popSizeSlider.value);i++) population.push({g: randomIndividual(target.length), f:0});generation = 0; startTime = performance.now(); updateDisplay(); draw();}
+    function evaluate(){const t = targetInput.value;let sum=0, best=-1, bestInd=null;for(let p of population){p.f = fitness(p.g,t); sum+=p.f; if(p.f>best){best=p.f; bestInd=p.g}}return {avg: sum/population.length, best, bestInd};}
+    function tournamentSelect(k){let best=null, bestScore=-1;for(let i=0;i<k;i++){let cand = choice(population); if(cand.f>bestScore){best=cand; bestScore=cand.f}}return best;}
+    function crossover(a,b){const len = a.length;const type = crossoverSel.value;if(type==='single'){const cp = randInt(1,len-1);return a.slice(0,cp)+b.slice(cp);}else if(type==='two'){let p1 = randInt(1,len-2), p2 = randInt(p1+1,len-1);return a.slice(0,p1)+b.slice(p1,p2)+a.slice(p2);}else{let o=''; for(let i=0;i<len;i++) o += Math.random()<0.5? a[i]: b[i]; return o;}}
+    function mutate(s, ratePercent){const rate = ratePercent/100;let out=''; for(let i=0;i<s.length;i++){if(Math.random()<rate) out+=choice(charset); else out+=s[i];}return out;}
+    function step(){const target = targetInput.value;if(!target) return;const stats = evaluate();if(stats.best===target.length){running=false; clearInterval(timer); timer=null; updateDisplay(); draw(); return;}const newPop = [];const popN = parseInt(popSizeSlider.value);const tournamentK = parseInt(tournamentSlider.value);const mutRate = parseFloat(mutationSlider.value);while(newPop.length<popN){const p1 = tournamentSelect(tournamentK);const p2 = tournamentSelect(tournamentK);let child = crossover(p1.g, p2.g);child = mutate(child, mutRate);newPop.push({g: child, f:0});}population = newPop; generation++; updateDisplay(); draw();}
+    function updateDisplay(){const stats = evaluate();generationEl.textContent = generation;bestStringEl.textContent = stats.bestInd || '-';bestFitnessEl.textContent = 'Fitness: ' + (stats.best===undefined? '-': stats.best + ' / ' + targetInput.value.length);avgFitnessEl.textContent = stats.avg.toFixed(2);popCountEl.textContent = population.length;elapsedEl.textContent = ((performance.now()-startTime)/1000).toFixed(1);}
+    function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle = '#0f2135'; ctx.fillRect(0,0,canvas.width,canvas.height);if(population.length===0) return;const maxF = targetInput.value.length || 1;const w = canvas.width, h = canvas.height; const padding=10;const barW = Math.max(2, (w-2*padding)/population.length);for(let i=0;i<population.length;i++){const f = population[i].f || 0;const barH = (f/maxF)*(h-40);const x = padding + i*barW;const y = h-20-barH;const t = f/maxF;const blue = Math.floor(80 + t*150);ctx.fillStyle = `rgb(50,${100+blue/3},${blue+50})`;ctx.fillRect(x, y, barW*0.9, barH);}ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(6,6,w-12,36);ctx.fillStyle = '#d9cdb4'; ctx.font='12px monospace';const bests = [...population].sort((a,b)=>b.f-a.f).slice(0,3);for(let i=0;i<bests.length;i++){ctx.fillText(`${i+1}. ${bests[i].g} (${bests[i].f})`, 12, 24 + i*14);}}
+    runBtn.onclick = ()=>{if(running){ running=false; runBtn.textContent='Start'; clearInterval(timer); timer=null; }else{ running=true; runBtn.textContent='Pause'; if(population.length===0) init(); timer = setInterval(()=>{ step(); if(!running){ clearInterval(timer); timer=null; runBtn.textContent='Start' } }, 120); }};
+    stepBtn.onclick = ()=>{ if(population.length===0) init(); step(); };
+    resetBtn.onclick = ()=>{ running=false; clearInterval(timer); timer=null; runBtn.textContent='Start'; init(); }
+    targetInput.onchange = ()=>{ init(); };
+    popSizeSlider.onchange = ()=>{ init(); };
+    mutationSlider.onchange = ()=>{};
+    init();
+  </script>
+</body>
+</html>
